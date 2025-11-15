@@ -212,6 +212,8 @@ class PaymentControllerTest {
         mockMvc.perform(post("/api/payments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Payment unsuccessful"))
+                .andExpect(jsonPath("$.failureReason").value("Invalid payment request or service error"));
     }
 }

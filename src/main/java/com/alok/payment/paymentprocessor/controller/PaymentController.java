@@ -42,6 +42,15 @@ public class PaymentController {
         try {
             PaymentResponse response = paymentService.processPayment(request);
             
+            // Handle null response from service
+            if (response == null) {
+                logger.error("Payment service returned null response");
+                PaymentResponse errorResponse = new PaymentResponse();
+                errorResponse.setMessage("Payment unsuccessful");
+                errorResponse.setFailureReason("Invalid payment request or service error");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+            }
+            
             if (response.getStatus().toString().contains("COMPLETED")) {
                 return ResponseEntity.ok(response);
             } else {
