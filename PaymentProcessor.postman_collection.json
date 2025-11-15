@@ -1,0 +1,215 @@
+{
+  "info": {
+    "name": "Payment Processor API",
+    "description": "Collection for testing Payment Processor API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/payments/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "payments", "health"]
+        }
+      }
+    },
+    {
+      "name": "Process Payment - Success",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccount\": \"ACC001\",\n  \"toAccount\": \"ACC002\",\n  \"amount\": 1000.00,\n  \"currency\": \"USD\",\n  \"paymentType\": \"DOMESTIC_PAYMENT\",\n  \"description\": \"Test payment\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8081/api/payments",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "payments"]
+        }
+      }
+    },
+    {
+      "name": "Process Payment - Insufficient Balance",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccount\": \"ACC005\",\n  \"toAccount\": \"ACC002\",\n  \"amount\": 50000.00,\n  \"currency\": \"USD\",\n  \"paymentType\": \"DOMESTIC_PAYMENT\",\n  \"description\": \"Large payment - should fail\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8081/api/payments",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "payments"]
+        }
+      }
+    },
+    {
+      "name": "Process Payment - Fraud Detection",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccount\": \"ACC001\",\n  \"toAccount\": \"ACC001\",\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"paymentType\": \"INTRABANK_TRANSFER\",\n  \"description\": \"Same account - fraud test\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8081/api/payments",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "payments"]
+        }
+      }
+    },
+    {
+      "name": "Process Payment - High Value",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccount\": \"ACC001\",\n  \"toAccount\": \"ACC002\",\n  \"amount\": 75000.00,\n  \"currency\": \"USD\",\n  \"paymentType\": \"INTERBANK_TRANSFER\",\n  \"description\": \"High value payment\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8081/api/payments",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "payments"]
+        }
+      }
+    },
+    {
+      "name": "Process Payment - Intrabank Transfer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromAccount\": \"ACC001\",\n  \"toAccount\": \"ACC003\",\n  \"amount\": 5000.00,\n  \"currency\": \"USD\",\n  \"paymentType\": \"INTRABANK_TRANSFER\",\n  \"description\": \"Intrabank transfer\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8081/api/payments",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "payments"]
+        }
+      }
+    },
+    {
+      "name": "Get Payment Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/payments/:transactionId",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "payments", ":transactionId"],
+          "variable": [
+            {
+              "key": "transactionId",
+              "value": "{{transactionId}}",
+              "description": "Replace with actual transaction ID"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Payments by Account",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/payments/account/ACC001",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "payments", "account", "ACC001"]
+        }
+      }
+    },
+    {
+      "name": "Get All Payments",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/api/payments",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "payments"]
+        }
+      }
+    },
+    {
+      "name": "Actuator - Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/actuator/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["actuator", "health"]
+        }
+      }
+    },
+    {
+      "name": "Actuator - Metrics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8081/actuator/metrics",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["actuator", "metrics"]
+        }
+      }
+    }
+  ]
+}
