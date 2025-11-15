@@ -27,7 +27,7 @@ public abstract class AbstractIntegrationTest {
     private FraudService fraudService;
 
     static {
-        postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
+        postgres = new PostgreSQLContainer<>(DockerImageName.parse("ghcr.io/alokkulkarni/testcontainers-registry/testcontainers/postgres:16-alpine").asCompatibleSubstituteFor("postgres"))
                 .withDatabaseName("paymentprocessor")
                 .withUsername("test")
                 .withPassword("test")
