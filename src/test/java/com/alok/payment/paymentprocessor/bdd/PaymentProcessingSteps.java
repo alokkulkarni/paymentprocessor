@@ -75,6 +75,24 @@ public class PaymentProcessingSteps {
 
     @Given("a payment exists with transaction ID {string}")
     public void aPaymentExistsWithTransactionID(String transactionId) {
+        // First check if payment exists from init.sql
+        Optional<Payment> existing = paymentRepository.findByTransactionId(transactionId);
+        
+        if (existing.isEmpty()) {
+            // If not found, create it for the test
+            Payment payment = new Payment();
+            payment.setTransactionId(transactionId);
+            payment.setFromAccount("ACC001");
+            payment.setToAccount("ACC002");
+            payment.setAmount(new BigDecimal("1000.00"));
+            payment.setCurrency("USD");
+            payment.setPaymentType(PaymentType.DOMESTIC_PAYMENT);
+            payment.setStatus(PaymentStatus.COMPLETED);
+            payment.setDescription("Test payment created for BDD scenario");
+            paymentRepository.save(payment);
+        }
+        
+        // Verify payment now exists
         Optional<Payment> payment = paymentRepository.findByTransactionId(transactionId);
         assertTrue(payment.isPresent(), "Payment with transaction ID " + transactionId + " should exist");
     }
