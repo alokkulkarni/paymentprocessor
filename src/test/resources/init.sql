@@ -44,3 +44,54 @@ VALUES
 -- Comments for documentation
 COMMENT ON TABLE payments IS 'Stores payment transaction records for testing';
 COMMENT ON COLUMN payments.transaction_id IS 'Unique transaction identifier for testing';
+
+-- Drop table if exists
+DROP TABLE IF EXISTS payment_audit CASCADE;
+
+-- Create payment_audit table
+CREATE TABLE payment_audit (
+    id BIGSERIAL PRIMARY KEY,
+    transaction_id VARCHAR(255) NOT NULL,
+    from_account VARCHAR(100) NOT NULL,
+    to_account VARCHAR(100) NOT NULL,
+    amount DECIMAL(19, 2) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    payment_type VARCHAR(50) NOT NULL,
+    
+    -- Original Payment Details
+    description TEXT,
+    payment_initiated_at TIMESTAMP,
+    
+    -- Fraud Decision Details
+    fraud_check_passed BOOLEAN,
+    fraud_reason TEXT,
+    fraud_risk_score VARCHAR(50),
+    fraud_check_at TIMESTAMP,
+    
+    -- Processing Details
+    final_status VARCHAR(50),
+    failure_reason TEXT,
+    processing_time_ms BIGINT,
+    completed_at TIMESTAMP,
+    
+    -- Account Validation Details
+    source_account_valid BOOLEAN,
+    destination_account_valid BOOLEAN,
+    sufficient_balance BOOLEAN,
+    
+    -- Audit Metadata
+    audited_by VARCHAR(100),
+    audited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for better query performance
+CREATE INDEX idx_payment_audit_transaction_id ON payment_audit(transaction_id);
+CREATE INDEX idx_payment_audit_from_account ON payment_audit(from_account);
+CREATE INDEX idx_payment_audit_to_account ON payment_audit(to_account);
+CREATE INDEX idx_payment_audit_final_status ON payment_audit(final_status);
+CREATE INDEX idx_payment_audit_fraud_check_passed ON payment_audit(fraud_check_passed);
+CREATE INDEX idx_payment_audit_audited_at ON payment_audit(audited_at);
+
+-- Comments for documentation
+COMMENT ON TABLE payment_audit IS 'Stores comprehensive audit trail for payment transactions';
+COMMENT ON COLUMN payment_audit.transaction_id IS 'Transaction identifier from the payment';

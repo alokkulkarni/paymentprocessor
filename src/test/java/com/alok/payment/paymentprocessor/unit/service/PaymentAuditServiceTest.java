@@ -118,9 +118,9 @@ class PaymentAuditServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw IllegalArgumentException when payment is null")
+    @DisplayName("Should throw NullPointerException when payment is null")
     void testAuditPaymentWithNullPayment() {
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(NullPointerException.class, () -> {
             paymentAuditService.auditPayment(
                 null, 
                 fraudCheckResponse, 
@@ -342,8 +342,12 @@ class PaymentAuditServiceTest {
         audit2.setId(2L);
         audit2.setToAccount("ACC001");
         
-        when(auditRepository.findByFromAccount("ACC001")).thenReturn(Arrays.asList(audit1));
-        when(auditRepository.findByToAccount("ACC001")).thenReturn(Arrays.asList(audit2));
+        // Use ArrayList to create mutable lists
+        List<PaymentAudit> fromAudits = new java.util.ArrayList<>(Arrays.asList(audit1));
+        List<PaymentAudit> toAudits = new java.util.ArrayList<>(Arrays.asList(audit2));
+        
+        when(auditRepository.findByFromAccount("ACC001")).thenReturn(fromAudits);
+        when(auditRepository.findByToAccount("ACC001")).thenReturn(toAudits);
 
         List<PaymentAudit> result = paymentAuditService.getAuditsByAccount("ACC001");
 

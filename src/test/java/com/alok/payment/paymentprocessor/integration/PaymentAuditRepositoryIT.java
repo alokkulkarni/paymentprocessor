@@ -252,17 +252,24 @@ class PaymentAuditRepositoryIT {
     @Test
     @DisplayName("Should handle multiple audits for same transaction")
     void testMultipleAuditsPerTransaction() {
-        // This should not happen in practice, but testing repository behavior
+        // This should not happen in practice (transaction IDs should be unique for audits),
+        // but testing repository behavior when it does happen
         PaymentAudit audit1 = createSampleAudit("TXN-001", "ACC001", "ACC002");
-        PaymentAudit audit2 = createSampleAudit("TXN-001", "ACC001", "ACC002");
-        
         auditRepository.save(audit1);
+        
+        // Verify first audit is found
+        Optional<PaymentAudit> found = auditRepository.findByTransactionId("TXN-001");
+        assertTrue(found.isPresent());
+        
+        // Save another audit with same transaction ID
+        PaymentAudit audit2 = createSampleAudit("TXN-001", "ACC001", "ACC002");
         auditRepository.save(audit2);
 
-        Optional<PaymentAudit> found = auditRepository.findByTransactionId("TXN-001");
-        
-        // findByTransactionId returns the first match
-        assertTrue(found.isPresent());
+        // When multiple records exist for same transaction ID, 
+        // findByTransactionId will throw IncorrectResultSizeDataAccessException
+        assertThrows(org.springframework.dao.IncorrectResultSizeDataAccessException.class, () -> {
+            auditRepository.findByTransactionId("TXN-001");
+        });
     }
 
     @Test
