@@ -25,19 +25,24 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final FraudService fraudService;
     private final AccountService accountService;
+    private final PaymentAuditService auditService;
     
     public PaymentService(PaymentRepository paymentRepository, 
                          FraudService fraudService,
-                         AccountService accountService) {
+                         AccountService accountService,
+                         PaymentAuditService auditService) {
         this.paymentRepository = paymentRepository;
         this.fraudService = fraudService;
         this.accountService = accountService;
+        this.auditService = auditService;
     }
     
     @Transactional
     public PaymentResponse processPayment(PaymentRequest request) {
         logger.info("Processing payment from {} to {} for amount {}", 
                    request.getFromAccount(), request.getToAccount(), request.getAmount());
+        
+        LocalDateTime processingStartTime = LocalDateTime.now();
         
         // Generate transaction ID
         String transactionId = UUID.randomUUID().toString();
@@ -56,21 +61,33 @@ public class PaymentService {
         // Save initial payment record
         payment = paymentRepository.save(payment);
         
+        // Track validation results for audit
+        boolean sourceAccountValid = false;
+        boolean destinationAccountValid = false;
+        boolean sufficientBalance = false;
+        FraudCheckResponse fraudCheck = null;
+        
         try {
             // Step 1: Validate source account
             logger.info("Step 1: Validating source account {}", request.getFromAccount());
             AccountBalanceResponse sourceAccountValidation = accountService.validateAccount(request.getFromAccount());
-            if (!sourceAccountValidation.isValid()) {
-                return handlePaymentFailure(payment, PaymentStatus.ACCOUNT_VALIDATION_FAILED, 
+            sourceAccountValid = sourceAccountValidation.isValid();
+            if (!sourceAccountValid) {
+                PaymentResponse response = handlePaymentFailure(payment, PaymentStatus.ACCOUNT_VALIDATION_FAILED, 
                     "Source account validation failed: " + sourceAccountValidation.getMessage());
+                auditService.auditFailedPayment(payment, sourceAccountValid, false, processingStartTime);
+                return response;
             }
             
             // Step 2: Validate destination account
             logger.info("Step 2: Validating destination account {}", request.getToAccount());
             AccountBalanceResponse destAccountValidation = accountService.validateAccount(request.getToAccount());
-            if (!destAccountValidation.isValid()) {
-                return handlePaymentFailure(payment, PaymentStatus.ACCOUNT_VALIDATION_FAILED, 
+            destinationAccountValid = destAccountValidation.isValid();
+            if (!destinationAccountValid) {
+                PaymentResponse response = handlePaymentFailure(payment, PaymentStatus.ACCOUNT_VALIDATION_FAILED, 
                     "Destination account validation failed: " + destAccountValidation.getMessage());
+                auditService.auditFailedPayment(payment, sourceAccountValid, destinationAccountValid, processingStartTime);
+                return response;
             }
             
             // Step 3: Fraud check
@@ -82,11 +99,13 @@ public class PaymentService {
                 request.getAmount(),
                 request.getCurrency()
             );
-            FraudCheckResponse fraudCheck = fraudService.checkFraud(fraudRequest);
+            fraudCheck = fraudService.checkFraud(fraudRequest);
             
             if (fraudCheck.isFraudulent()) {
-                return handlePaymentFailure(payment, PaymentStatus.FRAUD_CHECK_FAILED, 
+                PaymentResponse response = handlePaymentFailure(payment, PaymentStatus.FRAUD_CHECK_FAILED, 
                     "Fraud detected: " + fraudCheck.getReason());
+                auditService.auditPayment(payment, fraudCheck, sourceAccountValid, destinationAccountValid, false, processingStartTime);
+                return response;
             }
             
             // Step 4: Check balance
@@ -96,10 +115,13 @@ public class PaymentService {
                 request.getAmount()
             );
             AccountBalanceResponse balanceCheck = accountService.checkBalance(balanceRequest);
+            sufficientBalance = balanceCheck.isSufficientBalance();
             
-            if (!balanceCheck.isSufficientBalance()) {
-                return handlePaymentFailure(payment, PaymentStatus.INSUFFICIENT_BALANCE, 
+            if (!sufficientBalance) {
+                PaymentResponse response = handlePaymentFailure(payment, PaymentStatus.INSUFFICIENT_BALANCE, 
                     balanceCheck.getMessage());
+                auditService.auditPayment(payment, fraudCheck, sourceAccountValid, destinationAccountValid, sufficientBalance, processingStartTime);
+                return response;
             }
             
             // Step 5: Process payment
@@ -115,14 +137,27 @@ public class PaymentService {
             payment.setStatus(PaymentStatus.COMPLETED);
             payment = paymentRepository.save(payment);
             
+            // Step 7: Create audit record
+            logger.info("Step 7: Creating audit record");
+            auditService.auditPayment(payment, fraudCheck, sourceAccountValid, destinationAccountValid, sufficientBalance, processingStartTime);
+            
             logger.info("Payment completed successfully: {}", transactionId);
             
             return buildSuccessResponse(payment);
             
         } catch (Exception e) {
             logger.error("Error processing payment: {}", transactionId, e);
-            return handlePaymentFailure(payment, PaymentStatus.FAILED, 
+            PaymentResponse response = handlePaymentFailure(payment, PaymentStatus.FAILED, 
                 "Payment processing failed: " + e.getMessage());
+            
+            // Audit the failed payment
+            try {
+                auditService.auditFailedPayment(payment, sourceAccountValid, destinationAccountValid, processingStartTime);
+            } catch (Exception auditException) {
+                logger.error("Failed to create audit record for failed payment: {}", transactionId, auditException);
+            }
+            
+            return response;
         }
     }
     
