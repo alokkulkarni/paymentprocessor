@@ -5,11 +5,13 @@ import com.alok.payment.paymentprocessor.dto.FraudCheckResponse;
 import com.alok.payment.paymentprocessor.dto.PaymentRequest;
 import com.alok.payment.paymentprocessor.dto.PaymentResponse;
 import com.alok.payment.paymentprocessor.model.Payment;
+import com.alok.payment.paymentprocessor.model.PaymentAudit;
 import com.alok.payment.paymentprocessor.model.PaymentStatus;
 import com.alok.payment.paymentprocessor.model.PaymentType;
 import com.alok.payment.paymentprocessor.repository.PaymentRepository;
 import com.alok.payment.paymentprocessor.service.AccountService;
 import com.alok.payment.paymentprocessor.service.FraudService;
+import com.alok.payment.paymentprocessor.service.PaymentAuditService;
 import com.alok.payment.paymentprocessor.service.PaymentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,7 +29,6 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.atLeast;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PaymentService Unit Tests")
@@ -41,6 +42,9 @@ class PaymentServiceTest {
 
     @Mock
     private AccountService accountService;
+
+    @Mock
+    private PaymentAuditService auditService;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -101,6 +105,11 @@ class PaymentServiceTest {
 
         // Mock repository save
         when(paymentRepository.save(any(Payment.class))).thenReturn(savedPayment);
+        
+        // Mock audit service
+        when(auditService.logPaymentCreated(any(Payment.class), anyString())).thenReturn(new PaymentAudit());
+        when(auditService.logStatusChange(any(Payment.class), any(PaymentStatus.class), anyString())).thenReturn(new PaymentAudit());
+        when(auditService.logPaymentCompleted(any(Payment.class), anyString())).thenReturn(new PaymentAudit());
 
         PaymentResponse response = paymentService.processPayment(validPaymentRequest);
 
@@ -110,6 +119,8 @@ class PaymentServiceTest {
         verify(accountService, times(1)).deductBalance(eq("ACC001"), any(BigDecimal.class));
         verify(accountService, times(1)).addBalance(eq("ACC002"), any(BigDecimal.class));
         verify(paymentRepository, atLeast(2)).save(any(Payment.class));
+        verify(auditService, times(1)).logPaymentCreated(any(Payment.class), anyString());
+        verify(auditService, times(1)).logPaymentCompleted(any(Payment.class), anyString());
     }
 
     @Test
@@ -132,6 +143,10 @@ class PaymentServiceTest {
         when(accountService.validateAccount("ACC002")).thenReturn(destResponse);
 
         when(paymentRepository.save(any(Payment.class))).thenReturn(savedPayment);
+        
+        // Mock audit service
+        when(auditService.logPaymentCreated(any(Payment.class), anyString())).thenReturn(new PaymentAudit());
+        when(auditService.logPaymentFailed(any(Payment.class), any(PaymentStatus.class), anyString(), anyString())).thenReturn(new PaymentAudit());
 
         PaymentResponse response = paymentService.processPayment(validPaymentRequest);
 
@@ -140,6 +155,7 @@ class PaymentServiceTest {
         assertTrue(response.getFailureReason().toLowerCase().contains("fraud"));
         verify(accountService, never()).deductBalance(anyString(), any(BigDecimal.class));
         verify(accountService, never()).addBalance(anyString(), any(BigDecimal.class));
+        verify(auditService, times(1)).logPaymentFailed(any(Payment.class), any(PaymentStatus.class), anyString(), anyString());
     }
 
     @Test
@@ -168,6 +184,10 @@ class PaymentServiceTest {
         when(accountService.checkBalance(any())).thenReturn(balanceResponse);
 
         when(paymentRepository.save(any(Payment.class))).thenReturn(savedPayment);
+        
+        // Mock audit service
+        when(auditService.logPaymentCreated(any(Payment.class), anyString())).thenReturn(new PaymentAudit());
+        when(auditService.logPaymentFailed(any(Payment.class), any(PaymentStatus.class), anyString(), anyString())).thenReturn(new PaymentAudit());
 
         PaymentResponse response = paymentService.processPayment(validPaymentRequest);
 
@@ -175,6 +195,7 @@ class PaymentServiceTest {
         assertNotNull(response.getFailureReason());
         verify(accountService, never()).deductBalance(anyString(), any(BigDecimal.class));
         verify(accountService, never()).addBalance(anyString(), any(BigDecimal.class));
+        verify(auditService, times(1)).logPaymentFailed(any(Payment.class), any(PaymentStatus.class), anyString(), anyString());
     }
 
     @Test
@@ -187,6 +208,10 @@ class PaymentServiceTest {
         when(accountService.validateAccount("ACC001")).thenReturn(sourceResponse);
 
         when(paymentRepository.save(any(Payment.class))).thenReturn(savedPayment);
+        
+        // Mock audit service
+        when(auditService.logPaymentCreated(any(Payment.class), anyString())).thenReturn(new PaymentAudit());
+        when(auditService.logPaymentFailed(any(Payment.class), any(PaymentStatus.class), anyString(), anyString())).thenReturn(new PaymentAudit());
 
         PaymentResponse response = paymentService.processPayment(validPaymentRequest);
 
@@ -194,6 +219,7 @@ class PaymentServiceTest {
         assertNotNull(response.getFailureReason());
         verify(fraudService, never()).checkFraud(any());
         verify(accountService, never()).deductBalance(anyString(), any(BigDecimal.class));
+        verify(auditService, times(1)).logPaymentFailed(any(Payment.class), any(PaymentStatus.class), anyString(), anyString());
     }
 
     @Test
@@ -211,12 +237,17 @@ class PaymentServiceTest {
         when(accountService.validateAccount("ACC002")).thenReturn(destResponse);
 
         when(paymentRepository.save(any(Payment.class))).thenReturn(savedPayment);
+        
+        // Mock audit service
+        when(auditService.logPaymentCreated(any(Payment.class), anyString())).thenReturn(new PaymentAudit());
+        when(auditService.logPaymentFailed(any(Payment.class), any(PaymentStatus.class), anyString(), anyString())).thenReturn(new PaymentAudit());
 
         PaymentResponse response = paymentService.processPayment(validPaymentRequest);
 
         assertEquals(PaymentStatus.ACCOUNT_VALIDATION_FAILED, response.getStatus());
         assertNotNull(response.getFailureReason());
         verify(fraudService, never()).checkFraud(any());
+        verify(auditService, times(1)).logPaymentFailed(any(Payment.class), any(PaymentStatus.class), anyString(), anyString());
     }
 
     @Test
