@@ -25,13 +25,16 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final FraudService fraudService;
     private final AccountService accountService;
+    private final PaymentAuditService auditService;
     
     public PaymentService(PaymentRepository paymentRepository, 
                          FraudService fraudService,
-                         AccountService accountService) {
+                         AccountService accountService,
+                         PaymentAuditService auditService) {
         this.paymentRepository = paymentRepository;
         this.fraudService = fraudService;
         this.accountService = accountService;
+        this.auditService = auditService;
     }
     
     @Transactional
@@ -55,6 +58,9 @@ public class PaymentService {
         
         // Save initial payment record
         payment = paymentRepository.save(payment);
+        
+        // Log payment creation
+        auditService.logPaymentCreated(payment, "SYSTEM");
         
         try {
             // Step 1: Validate source account
@@ -104,8 +110,10 @@ public class PaymentService {
             
             // Step 5: Process payment
             logger.info("Step 5: Processing payment");
+            PaymentStatus oldStatus = payment.getStatus();
             payment.setStatus(PaymentStatus.PROCESSING);
             paymentRepository.save(payment);
+            auditService.logStatusChange(payment, oldStatus, "SYSTEM");
             
             // Deduct from source account and credit to destination account
             accountService.deductBalance(request.getFromAccount(), request.getAmount());
@@ -114,6 +122,9 @@ public class PaymentService {
             // Step 6: Complete payment
             payment.setStatus(PaymentStatus.COMPLETED);
             payment = paymentRepository.save(payment);
+            
+            // Log payment completion
+            auditService.logPaymentCompleted(payment, "SYSTEM");
             
             logger.info("Payment completed successfully: {}", transactionId);
             
@@ -130,9 +141,13 @@ public class PaymentService {
         logger.warn("Payment failed - Transaction: {}, Status: {}, Reason: {}", 
                    payment.getTransactionId(), status, reason);
         
+        PaymentStatus oldStatus = payment.getStatus();
         payment.setStatus(status);
         payment.setFailureReason(reason);
         payment = paymentRepository.save(payment);
+        
+        // Log payment failure
+        auditService.logPaymentFailed(payment, oldStatus, reason, "SYSTEM");
         
         PaymentResponse response = new PaymentResponse();
         response.setTransactionId(payment.getTransactionId());
