@@ -44,3 +44,33 @@ VALUES
 -- Comments for documentation
 COMMENT ON TABLE payments IS 'Stores payment transaction records for testing';
 COMMENT ON COLUMN payments.transaction_id IS 'Unique transaction identifier for testing';
+
+-- Drop payment_audit table if exists
+DROP TABLE IF EXISTS payment_audit CASCADE;
+
+-- Create payment_audit table
+CREATE TABLE payment_audit (
+    id BIGSERIAL PRIMARY KEY,
+    transaction_id VARCHAR(255) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    old_status VARCHAR(50),
+    new_status VARCHAR(50),
+    from_account VARCHAR(100),
+    to_account VARCHAR(100),
+    amount DECIMAL(19, 2),
+    currency VARCHAR(3),
+    performed_by VARCHAR(100),
+    details TEXT,
+    audit_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for payment_audit table
+CREATE INDEX idx_payment_audit_transaction_id ON payment_audit(transaction_id);
+CREATE INDEX idx_payment_audit_action ON payment_audit(action);
+CREATE INDEX idx_payment_audit_timestamp ON payment_audit(audit_timestamp);
+CREATE INDEX idx_payment_audit_from_account ON payment_audit(from_account);
+CREATE INDEX idx_payment_audit_to_account ON payment_audit(to_account);
+
+-- Comments for payment_audit table
+COMMENT ON TABLE payment_audit IS 'Stores audit trail for payment transactions during testing';
+
