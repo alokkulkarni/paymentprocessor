@@ -10,6 +10,7 @@ import com.alok.payment.paymentprocessor.model.PaymentType;
 import com.alok.payment.paymentprocessor.repository.PaymentRepository;
 import com.alok.payment.paymentprocessor.service.AccountService;
 import com.alok.payment.paymentprocessor.service.FraudService;
+import com.alok.payment.paymentprocessor.service.PaymentAuditService;
 import com.alok.payment.paymentprocessor.service.PaymentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ class PaymentServiceTest {
 
     @Mock
     private AccountService accountService;
+
+    @Mock
+    private PaymentAuditService auditService;
 
     @InjectMocks
     private PaymentService paymentService;
