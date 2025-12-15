@@ -73,7 +73,7 @@ public class PaymentAuditService {
         if (fraudCheckResponse != null) {
             audit.setFraudCheckPassed(!fraudCheckResponse.isFraudulent());
             audit.setFraudReason(fraudCheckResponse.getReason());
-            audit.setFraudRiskScore(fraudCheckResponse.getRiskScore());
+            audit.setFraudRiskScore(String.valueOf(fraudCheckResponse.getRiskScore()));
             audit.setFraudCheckAt(LocalDateTime.now());
         } else {
             audit.setFraudCheckPassed(null);
