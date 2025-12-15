@@ -1,6 +1,7 @@
 name: CI Pipeline
 
 on:
+  workflow_dispatch:  # Allow manual and API-triggered runs
   pull_request:
     branches:
       - main
